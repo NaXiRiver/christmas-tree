@@ -1,579 +1,162 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <title>WCS综合查询系统</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    button { padding: 6px 12px; margin-right: 10px; }
-    #loading { display: none; color: #888; }
-    #error { color: red; margin-top: 10px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background-color: #f5f5f5; }
-    .input-label { margin-right: 10px; }
-    .record-info { margin-top: 10px; text-align: right; }
-    
-    /* 标签页样式 */
-    .tab-container { margin-bottom: 20px; }
-    .tabs { display: flex; border-bottom: 1px solid #ccc; }
-    .tab { padding: 8px 16px; cursor: pointer; background-color: #f0f0f0; border: 1px solid #ccc; border-bottom: none; border-radius: 4px 4px 0 0; }
-    .tab.active { background-color: white; color: #007bff; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    
-    /* 筛选和排序面板 */
-    .filter-sort-panel {
-      background: #f8f8f8;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 15px;
-    }
-    .filter-sort-row {
-      display: flex;
-      margin-bottom: 10px;
-      align-items: center;
-    }
-    .filter-sort-label {
-      min-width: 100px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Christmas Galaxy</title>
+<style>
+body { margin:0; overflow:hidden; background:#000; }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 </head>
+
 <body>
-  <h1>WCS综合查询系统</h1>
-  <div id="error"></div>
-  
-  <!-- 标签页导航 -->
-  <div class="tab-container">
-    <div class="tabs">
-      <div class="tab" data-tab="stock">已有库存查询</div>
-      <div class="tab active" data-tab="task">未完成作业查询</div>
-    </div>
-  </div>
 
-  <!-- 库存查询标签页 -->
-  <div class="tab-content" id="stock">
-    <table id="stockTable">
-      <thead>
-        <tr>
-          <th colspan="11" style="background:#fafafa; text-align:left;">
-            <label for="palletInput" class="input-label">托盘号:</label>  
-            <input type="text" id="palletInput" placeholder="输入托盘号" style="padding: 6px; width: 200px;"> 
-            <label for="locationInput" class="input-label">库位:</label>  
-            <input type="text" id="locationInput" placeholder="输入库位号" style="padding: 6px; width: 200px;">  
-            <button id="btnStockQuery">查询库存</button>
-            <button id="btnStockExport" style="margin-left:10px">导出库存</button>
-            <span id="stockLoading"></span>
-            <span style="float:right;">总记录数：<span id="stockTotalCount">0</span></span>
-          </th>
-        </tr>
-        <tr>
-          <th>序号</th>
-          <th>托盘号</th>
-          <th>库位</th>
-          <th>创建时间</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- 数据行由脚本动态插入 -->
-      </tbody>
-    </table>
-    <div class="record-info">
-      显示 <span id="stockShowCount">0</span> 条记录，共 <span id="stockTotalRecords">0</span> 条记录
-    </div>
-  </div>
-
-  <!-- 作业查询标签页 -->
-  <div class="tab-content active" id="task">
-    <div class="filter-sort-panel">
-      <div class="filter-sort-row">
-        <div class="filter-sort-label">排序设置：</div>
-        <select id="sortField" style="padding: 6px; width: 150px;">
-          <option value="Laneway">巷道</option>
-          <option value="TaskStatus" selected>作业状态</option>
-          <option value="CreateTime">创建时间</option>
-          <option value="TaskType">作业类型</option>
-          <option value="StartLocation">开始货位</option>
-          <option value="EndLocation">目的货位</option>
-        </select>
-        <select id="sortOrder" style="padding: 6px; width: 100px;">
-          <option value="asc">升序</option>
-          <option value="desc" selected>降序</option>
-        </select>
-      </div>
-      
-      <div class="filter-sort-row">
-        <div class="filter-sort-label">巷道筛选：</div>
-        <input type="text" id="laneFilter" placeholder="输入巷道编号" style="padding: 6px; width: 150px;">
-      </div>
-      
-      <div class="filter-sort-row">
-        <div class="filter-sort-label">作业状态筛选：</div>
-        <select id="statusFilter" style="padding: 6px; width: 150px;">
-          <option value="">全部状态</option>
-          <option value="Pending">待处理</option>
-          <option value="Completed">已完成</option>
-          <option value="Error">错误</option>
-        </select>
-      </div>
-      
-      <div class="filter-sort-row">
-        <div class="filter-sort-label">时间范围筛选：</div>
-        <input type="datetime-local" id="startTime" placeholder="开始时间" style="padding: 6px; width: 200px;">
-        <span style="margin: 0 10px;">至</span>
-        <input type="datetime-local" id="endTime" placeholder="结束时间" style="padding: 6px; width: 200px;">
-      </div>
-    </div>
-    
-    <table id="taskTable">
-      <thead>
-        <tr>
-          <th colspan="11" style="background:#fafafa; text-align:left;">
-            <label for="taskPalletInput" class="input-label">托盘号:</label>  
-            <input type="text" id="taskPalletInput" placeholder="输入托盘号" style="padding: 6px; width: 200px;">  
-            <button id="btnTaskQuery">查询作业</button>
-            <button id="btnTaskExport" style="margin-left:10px">导出作业</button>
-            <span id="taskLoading"></span>
-            <span style="float:right;">总记录数：<span id="taskTotalCount">0</span></span>
-          </th>
-        </tr>
-        <tr>
-          <th>序号</th>
-          <th>巷道</th>
-          <th>任务号</th>
-          <th>WMS任务号</th>
-          <th>托盘号</th>
-          <th>作业类型</th>
-          <th>开始货位</th>
-          <th>目的货位</th>
-          <th>作业状态</th>
-          <th>创建时间</th>
-          <th>消息</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- 数据行由脚本动态插入 -->
-      </tbody>
-    </table>
-    <div class="record-info">
-      显示 <span id="taskShowCount">0</span> 条记录，共 <span id="taskTotalRecords">0</span> 条记录
-    </div>
-  </div>
+<video id="input_video" style="display:none"></video>
 
 <script>
-  // 获取当前主机地址（自动适配内网/外网）
-  function getBaseUrl() {
-    if (window.location.hostname === 'localhost') {
-      return 'http://localhost:9022';
-    }
-    return `${window.location.protocol}//${window.location.host}`;
+// ================= 场景 =================
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
+camera.position.z = 85;
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// 灯光
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+const light = new THREE.PointLight(0xffd700,3,200);
+light.position.set(30,40,50);
+scene.add(light);
+
+// ================= 艺术字 =================
+const textPlane = new THREE.Mesh(
+  new THREE.PlaneGeometry(55,18),
+  new THREE.MeshBasicMaterial({transparent:true})
+);
+
+function makeText(){
+  const c=document.createElement("canvas");
+  c.width=4096; c.height=1024;
+  const x=c.getContext("2d");
+  x.shadowColor="#ffd700";
+  x.shadowBlur=50;
+  x.fillStyle="#fff";
+  x.font="bold 260px 'Microsoft YaHei'";
+  x.textAlign="center";
+  x.textBaseline="middle";
+  x.fillText("祝我的彦瑾宝贝圣诞节快乐",2048,512);
+  return new THREE.CanvasTexture(c);
+}
+textPlane.material.map = makeText();
+textPlane.position.z = 15;
+textPlane.visible = false;
+scene.add(textPlane);
+
+// ================= 照片星云 =================
+const galleryGroup = new THREE.Group();
+scene.add(galleryGroup);
+
+const photoTextures = [];
+const loader = new THREE.TextureLoader();
+
+// 直接加载你准备好的 10 张照片
+for(let i=1;i<=10;i++){
+  loader.load(`photos/${i}.jpg`, tex=>{
+    tex.colorSpace = THREE.SRGBColorSpace;
+    photoTextures.push(tex);
+    if(photoTextures.length===10) createGallery();
+  });
+}
+
+function createGallery(){
+  const geo = new THREE.PlaneGeometry(8,6);
+  const borderGeo = new THREE.PlaneGeometry(8.4,6.4);
+  const borderMat = new THREE.MeshBasicMaterial({color:0xffd700});
+
+  for(let i=0;i<40;i++){
+    const tex = photoTextures[i%10];
+    const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:tex}));
+    const border = new THREE.Mesh(borderGeo,borderMat);
+    border.position.z=-0.05;
+    mesh.add(border);
+
+    const r = 25+Math.random()*40;
+    const t = Math.random()*Math.PI*2;
+    const p = Math.acos(2*Math.random()-1);
+    mesh.userData.target = new THREE.Vector3(
+      r*Math.sin(p)*Math.cos(t),
+      r*Math.sin(p)*Math.sin(t),
+      r*Math.cos(p)
+    );
+    mesh.position.set(0,0,0);
+    mesh.scale.set(0,0,0);
+    galleryGroup.add(mesh);
+  }
+}
+
+// ================= 手势 =================
+let mode="tree";
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  if(mode==="text"){
+    textPlane.visible=true;
+    textPlane.position.y = Math.sin(Date.now()*0.002)*1;
+  }else{
+    textPlane.visible=false;
   }
 
-  // 公共元素
-  const errorDiv = document.getElementById('error');
-  
-  // 库存查询相关元素
-  const stockTable = document.querySelector('#stock tbody');
-  const stockTotalCountEl = document.getElementById('stockTotalCount');
-  const stockTotalRecordsEl = document.getElementById('stockTotalRecords');
-  const stockShowCountEl = document.getElementById('stockShowCount');
-  const palletInput = document.getElementById('palletInput');
-  const locationInput = document.getElementById('locationInput');
-  const btnStockQuery = document.getElementById('btnStockQuery');
-  const stockLoading = document.getElementById('stockLoading');
-  
-  // 作业查询相关元素
-  const taskTable = document.querySelector('#task tbody');
-  const taskTotalCountEl = document.getElementById('taskTotalCount');
-  const taskTotalRecordsEl = document.getElementById('taskTotalRecords');
-  const taskShowCountEl = document.getElementById('taskShowCount');
-  const taskPalletInput = document.getElementById('taskPalletInput');
-  const btnTaskQuery = document.getElementById('btnTaskQuery');
-  const taskLoading = document.getElementById('taskLoading');
-  
-  // 作业查询排序和筛选元素
-  const sortField = document.getElementById('sortField');
-  const sortOrder = document.getElementById('sortOrder');
-  const laneFilter = document.getElementById('laneFilter');
-  const statusFilter = document.getElementById('statusFilter');
-  const startTime = document.getElementById('startTime');
-  const endTime = document.getElementById('endTime');
-  
-  let stockLastData = [];
-  let taskLastData = [];
-  
-  // 标签页切换
-  const tabs = document.querySelectorAll('.tab');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      
-      document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-      });
-      document.getElementById(tab.dataset.tab).classList.add('active');
-      
-      if (window.stockInterval) clearInterval(window.stockInterval);
-      if (window.taskInterval) clearInterval(window.taskInterval);
-      
-      if (tab.dataset.tab === 'stock') {
-        getStockData();
-        window.stockInterval = setInterval(getStockData, 5000);
-      } else {
-        getTaskData();
-        window.taskInterval = setInterval(getTaskData, 3000);
-      }
+  if(mode==="nebula"){
+    galleryGroup.children.forEach(m=>{
+      m.position.lerp(m.userData.target,0.05);
+      m.scale.lerp(new THREE.Vector3(1,1,1),0.05);
+      m.lookAt(camera.position);
     });
-  });
-  
-  // 库存查询
-  btnStockQuery.addEventListener('click', getStockData);
-  
-  async function getStockData() {
-    errorDiv.textContent = '';
-    stockLoading.style.display = 'inline';
-    
-    const palletCode = palletInput.value.trim(); 
-    const locationCode = locationInput.value.trim(); 
-    
-    const params = {
-      TaskCode: locationCode || "0",
-      PalletCode: palletCode || "0",  
-      TaskType: "0"
-    };
-
-    try {
-      const resp = await fetch(`${getBaseUrl()}/GetStockList`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
-      });
-
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      
-      const text = await resp.text();
-      const list = JSON.parse(text); 
-
-      stockTotalCountEl.textContent = list.length;
-      stockTotalRecordsEl.textContent = list.length;
-
-      if (!Array.isArray(list) || list.length === 0) {
-        if (stockLastData.length === 0) return;
-        stockTable.innerHTML = '<tr><td colspan="4">没有查询到库存记录</td></tr>';
-        stockLastData = [];
-        stockShowCountEl.textContent = 0;
-        stockLoading.style.display = 'none';
-        return;
-      }
-
-      const currentDataStr = JSON.stringify(list);
-      const lastDataStr = JSON.stringify(stockLastData);
-
-      if (currentDataStr === lastDataStr) {
-        stockShowCountEl.textContent = list.length;
-        stockLoading.style.display = 'none';
-        return;
-      }
-
-      stockLastData = list;
-      stockTable.innerHTML = '';
-      stockShowCountEl.textContent = list.length;
-
-      list.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td>${item.LPN || ''}</td>
-          <td>${item.Location || ''}</td>
-          <td>${formatDateTime(item.CreateTime) || ''}</td>
-        `;
-        stockTable.appendChild(tr);
-      });
-
-    } catch (err) {
-      console.error(err);
-      errorDiv.textContent = '库存查询失败：' + err.message;
-      stockShowCountEl.textContent = 0;
-    } finally {
-      stockLoading.style.display = 'none';
-    }
-  }
-  
-  // 作业查询
-  btnTaskQuery.addEventListener('click', getTaskData);
-  
-  async function getTaskData() {
-    errorDiv.textContent = '';
-    taskLoading.style.display = 'inline';
-    
-    const palletCode = taskPalletInput.value.trim();  
-    const params = {
-      TaskCode: "0",
-      PalletCode: palletCode || "0",  
-      TaskType: "0"
-    };
-
-    try {
-      const resp = await fetch(`${getBaseUrl()}/GetTaskList`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
-      });
-
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      
-      const text = await resp.text();
-      const list = JSON.parse(text); 
-
-      taskTotalCountEl.textContent = list.length;
-      taskTotalRecordsEl.textContent = list.length;
-
-      if (!Array.isArray(list) || list.length === 0) {
-        if (taskLastData.length === 0) return;
-        taskTable.innerHTML = '<tr><td colspan="11">没有查询到作业</td></tr>';
-        taskLastData = [];
-        taskShowCountEl.textContent = 0;
-        taskLoading.style.display = 'none';
-        return;
-      }
-
-      const currentDataStr = JSON.stringify(list);
-      const lastDataStr = JSON.stringify(taskLastData);
-
-      if (currentDataStr === lastDataStr) {
-        taskShowCountEl.textContent = list.length;
-        taskLoading.style.display = 'none';
-        return;
-      }
-
-      // 应用排序和筛选
-      let filteredList = [...list];
-      
-      // 巷道筛选
-      const laneFilterValue = laneFilter.value.trim();
-      if (laneFilterValue) {
-        filteredList = filteredList.filter(item => 
-          item.Laneway && item.Laneway.includes(laneFilterValue)
-        );
-      }
-      
-      // 作业状态筛选
-      const statusFilterValue = statusFilter.value;
-      if (statusFilterValue) {
-        filteredList = filteredList.filter(item => 
-          item.TaskStatus === statusFilterValue
-        );
-      }
-      
-      // 时间范围筛选
-      const startTimeValue = startTime.value;
-      const endTimeValue = endTime.value;
-      if (startTimeValue && endTimeValue) {
-        const start = new Date(startTimeValue);
-        const end = new Date(endTimeValue);
-        filteredList = filteredList.filter(item => {
-          const createTime = item.CreateTime ? new Date(item.CreateTime) : null;
-          return createTime >= start && createTime <= end;
-        });
-      }
-      
-      // 排序
-      const sortFieldValue = sortField.value;
-      const sortOrderValue = sortOrder.value === 'asc' ? true : false;
-      filteredList.sort((a, b) => {
-        const aValue = a[sortFieldValue] || '';
-        const bValue = b[sortFieldValue] || '';
-        
-        // 处理日期排序
-        if (aValue instanceof Date || bValue instanceof Date) {
-          const dateA = aValue instanceof Date ? aValue : new Date(aValue);
-          const dateB = bValue instanceof Date ? bValue : new Date(bValue);
-          return sortOrderValue ? dateA - dateB : dateB - dateA;
-        }
-        
-        // 字符串比较
-        const comparison = aValue.toString().localeCompare(bValue.toString());
-        return sortOrderValue ? comparison : -comparison;
-      });
-
-      taskLastData = filteredList;
-      taskTable.innerHTML = '';
-      taskShowCountEl.textContent = filteredList.length;
-
-      filteredList.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td>${item.Laneway || ''}</td>
-          <td>${item.TaskNo || ''}</td>
-          <td>${item.SerialNo || ''}</td>
-          <td>${item.LPN || ''}</td>
-          <td>${item.TaskType || ''}</td>
-          <td>${item.StartLocation || ''}</td>
-          <td>${item.EndLocation || ''}</td>
-          <td>${item.TaskStatus || ''}</td>
-          <td>${formatDateTime(item.CreateTime) || ''}</td>
-          <td>${item.Message || ''}</td>
-        `;
-        taskTable.appendChild(tr);
-      });
-
-    } catch (err) {
-      console.error(err);
-      errorDiv.textContent = '作业查询失败：' + err.message;
-      taskShowCountEl.textContent = 0;
-    } finally {
-      taskLoading.style.display = 'none';
-    }
-  }
-  
-  // 页面加载时初始化
-  window.addEventListener('DOMContentLoaded', () => {
-    document.querySelector('.tab[data-tab="task"]').click();
-    console.log('当前请求地址：', getBaseUrl());
-    
-    // 设置默认时间范围（最近24小时）
-    const now = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    startTime.value = formatDateTimeForInput(yesterday);
-    endTime.value = formatDateTimeForInput(now);
-  });
-  
-  // 格式化日期时间
-  function formatDateTime(dateTimeString) {  
-    if (!dateTimeString) return '';  
-    const date = new Date(dateTimeString);  
-    return isNaN(date.getTime()) ? dateTimeString : date.toLocaleString();  
-  }
-  
-  // 格式化日期时间用于输入框
-  function formatDateTimeForInput(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  }
-  
-  // 导出库存数据为Excel
-  const btnStockExport = document.getElementById('btnStockExport');
-  btnStockExport.addEventListener('click', exportStockData);
-  
-  async function exportStockData() {
-    if (!stockLastData.length) {
-      alert('没有可导出的库存数据');
-      return;
-    }
-    
-    try {
-      const wb = XLSX.utils.book_new();
-      const headers = ['序号', '托盘号', '库位', '创建时间'];
-      const wsData = stockLastData.map((item, index) => [
-        index + 1,
-        item.LPN || '',
-        item.Location || '',
-        formatDateTime(item.CreateTime) || ''
-      ]);
-      
-      wsData.unshift(headers);
-      
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      const wsCols = [
-        {wch: 8}, {wch: 15}, {wch: 15}, {wch: 20}
-      ];
-      ws['!cols'] = wsCols;
-      
-      XLSX.utils.book_append_sheet(wb, ws, '库存数据');
-      
-      const now = new Date();
-      const filename = `库存数据_${getFormattedTimestamp()}.xlsx`;
-      
-      XLSX.writeFile(wb, filename);
-      
-    } catch (err) {
-      console.error('导出库存数据失败:', err);
-      errorDiv.textContent = `导出失败：${err.message}`;
-      alert('导出失败，请查看控制台日志');
-    }
+  }else{
+    galleryGroup.children.forEach(m=>{
+      m.position.lerp(new THREE.Vector3(0,0,0),0.1);
+      m.scale.lerp(new THREE.Vector3(0,0,0),0.1);
+    });
   }
 
-  // 导出作业数据为Excel
-  const btnTaskExport = document.getElementById('btnTaskExport');
-  btnTaskExport.addEventListener('click', exportTaskData);
-  
-  async function exportTaskData() {
-    if (!taskLastData.length) {
-      alert('没有可导出的作业数据');
-      return;
-    }
-    
-    try {
-      const wb = XLSX.utils.book_new();
-      const headers = ['序号','巷道','任务号','WMS任务号','托盘号','作业类型','开始货位','目的货位','作业状态','创建时间','消息'];
-      
-      const wsData = taskLastData.map((item, index) => [
-        index + 1,
-        item.Laneway || '',
-        item.TaskNo || '',
-        item.SerialNo || '',
-        item.LPN || '',
-        item.TaskType || '',
-        item.StartLocation || '',
-        item.EndLocation || '',
-        item.TaskStatus || '',
-        formatDateTime(item.CreateTime) || '',
-        item.Message || ''
-      ]);
-      
-      wsData.unshift(headers);
-      
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      const wsCols = [
-        {wch: 8},    // 序号
-        {wch: 10},   // 巷道
-        {wch: 15},   // 任务号
-        {wch: 15},   // WMS任务号
-        {wch: 15},   // 托盘号
-        {wch: 12},   // 作业类型
-        {wch: 15},   // 开始货位
-        {wch: 15},   // 目的货位
-        {wch: 12},   // 作业状态
-        {wch: 20},   // 创建时间
-        {wch: 30}    // 消息
-      ];
-      ws['!cols'] = wsCols;
-      
-      XLSX.utils.book_append_sheet(wb, ws, '作业数据');
-      
-      const now = new Date();
-      const filename = `作业数据_${getFormattedTimestamp()}.xlsx`;
-      
-      XLSX.writeFile(wb, filename);
-      
-    } catch (err) {
-      console.error('导出作业数据失败:', err);
-      errorDiv.textContent = `导出失败：${err.message}`;
-      alert('导出失败，请查看控制台日志');
-    }
-  }
-  
-  // 修改后的时间戳生成逻辑
-  function getFormattedTimestamp() {
-    const now = new Date();
-    return [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, '0'),
-      String(now.getDate()).padStart(2, '0'),
-      String(now.getHours()).padStart(2, '0'),
-      String(now.getMinutes()).padStart(2, '0'),
-      String(now.getSeconds()).padStart(2, '0')
-    ].join('-');
-  }
+  renderer.render(scene,camera);
+}
+animate();
+
+// ================= 手势识别 =================
+const video = document.getElementById("input_video");
+const hands = new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+hands.setOptions({maxNumHands:1,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
+
+hands.onResults(r=>{
+  if(!r.multiHandLandmarks) return;
+  const lm = r.multiHandLandmarks[0];
+  const d=(a,b)=>Math.hypot(lm[a].x-lm[b].x,lm[a].y-lm[b].y);
+
+  const open = d(8,0)>0.2 && d(12,0)>0.2 && d(16,0)>0.2;
+  const fist = d(8,0)<0.1 && d(12,0)<0.1;
+  const ok = d(4,8)<0.05;
+
+  if(open) mode="nebula";
+  else if(ok) mode="text";
+  else if(fist) mode="tree";
+});
+
+new Camera(video,{
+  onFrame:async()=>await hands.send({image:video}),
+  width:320,height:240
+}).start();
+
+window.onresize=()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+};
 </script>
 </body>
 </html>
