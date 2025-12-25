@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>祝彦瑾宝贝圣诞快乐</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            /* 深空渐变背景，替代纯黑 */
+            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        /* 祝福语：渐变发光+动态呼吸 */
+        .greeting {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            background: linear-gradient(90deg, #ffd700, #ff9a00, #ffd700);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 154, 0, 0.5);
+            animation: wishGlow 3s ease-in-out infinite alternate;
+            z-index: 10;
+        }
+        /* 圣诞树容器：3D透视+轻微摆动 */
+        .christmas-tree {
+            position: relative;
+            transform-style: preserve-3d;
+            animation: treeSway 8s ease-in-out infinite alternate;
+            z-index: 5;
+        }
+        /* 圣诞树三层：渐变绿色+阴影+立体层次 */
+        .tree-part {
+            width: 0;
+            height: 0;
+            border-left: 120px solid transparent;
+            border-right: 120px solid transparent;
+            border-bottom: 150px solid;
+            margin: -30px auto;
+            position: relative;
+            filter: drop-shadow(0 10px 8px rgba(0,0,0,0.5));
+        }
+        /* 顶层：亮绿色 */
+        .tree-part:nth-child(2) {
+            border-left: 80px solid transparent;
+            border-right: 80px solid transparent;
+            border-bottom: 100px solid;
+            border-bottom-color: rgba(76, 175, 80, 0.95);
+            transform: translateZ(20px);
+        }
+        /* 中层：中绿色 */
+        .tree-part:nth-child(3) {
+            border-left: 100px solid transparent;
+            border-right: 100px solid transparent;
+            border-bottom: 120px solid;
+            border-bottom-color: rgba(60, 179, 113, 0.95);
+            transform: translateZ(10px);
+        }
+        /* 底层：深绿色 */
+        .tree-part:nth-child(4) {
+            border-bottom-color: rgba(46, 125, 50, 0.95);
+        }
+        /* 树干：木质纹理+立体 */
+        .trunk {
+            width: 50px;
+            height: 80px;
+            background: linear-gradient(90deg, #8B4513, #A0522D, #8B4513);
+            margin: 0 auto;
+            border-radius: 8px 8px 0 0;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px);
+            transform: translateZ(-5px);
+            filter: drop-shadow(0 8px 5px rgba(0,0,0,0.4));
+        }
+        /* 星星：渐变+光晕+旋转 */
+        .star {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 50px;
+            background: linear-gradient(45deg, #ffd700, #fffacd);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700;
+            animation: starSpin 8s linear infinite, starGlow 2s ease-in-out infinite alternate;
+            z-index: 6;
+        }
+        /* 装饰球：多彩+光晕+悬浮闪烁 */
+        .ornament {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            animation: ornamentBlink 2s ease-in-out infinite alternate, ornamentFloat 3s ease-in-out infinite alternate;
+            box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+            color: inherit;
+            z-index: 7;
+        }
+        /* 雪花：透明渐变+随机下落+旋转 */
+        .snowflake {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            animation: snowFall linear infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+        /* 星空背景点：缓慢闪烁 */
+        .star-bg {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #fff;
+            border-radius: 50%;
+            opacity: 0.7;
+            animation: starBgBlink 3s ease-in-out infinite alternate;
+        }
+
+        /* 动画定义：更自然的节奏 */
+        @keyframes wishGlow {
+            from { text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 154, 0, 0.5); }
+            to { text-shadow: 0 0 25px rgba(255, 215, 0, 1), 0 0 50px rgba(255, 154, 0, 0.8); }
+        }
+        @keyframes treeSway {
+            0% { transform: rotateZ(-1deg); }
+            100% { transform: rotateZ(1deg); }
+        }
+        @keyframes starSpin {
+            from { transform: translateX(-50%) rotate(0deg); }
+            to { transform: translateX(-50%) rotate(360deg); }
+        }
+        @keyframes starGlow {
+            from { text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700; }
+            to { text-shadow: 0 0 20px #ffd700, 0 0 40px #ffd700; }
+        }
+        @keyframes ornamentBlink {
+            from { opacity: 0.8; transform: scale(1); }
+            to { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes ornamentFloat {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-10px); }
+        }
+        @keyframes snowFall {
+            from { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        @keyframes starBgBlink {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="greeting">祝我的彦瑾宝贝圣诞节快乐 🎄</div>
+    <div class="christmas-tree">
+        <div class="star">★</div>
+        <div class="tree-part"></div>
+        <div class="tree-part"></div>
+        <div class="tree-part"></div>
+        <div class="trunk"></div>
+    </div>
+
+    <script>
+        // 生成星空背景
+        function createStarBg() {
+            const body = document.body;
+            const starCount = 200;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star-bg');
+                star.style.left = `${Math.random() * 100}vw`;
+                star.style.top = `${Math.random() * 100}vh`;
+                star.style.animationDelay = `${Math.random() * 3}s`;
+                body.appendChild(star);
+            }
+        }
+
+        // 生成多彩装饰球（随机位置+颜色）
+        function createOrnaments() {
+            const tree = document.querySelector('.christmas-tree');
+            const colors = ['#ff4757', '#3742fa', '#2ed573', '#ffdd59', '#a55eea', '#ffa502', '#ffffff'];
+            const positions = [
+                {x: -50, y: 30}, {x: 40, y: 50}, {x: -70, y: 90},
+                {x: 60, y: 110}, {x: -30, y: 150}, {x: 80, y: 170},
+                {x: -90, y: 210}, {x: 70, y: 230}
+            ];
+            positions.forEach((pos, idx) => {
+                const ornament = document.createElement('div');
+                ornament.classList.add('ornament');
+                ornament.style.left = `50%`;
+                ornament.style.top = `${pos.y}px`;
+                ornament.style.transform = `translateX(${pos.x}px)`;
+                ornament.style.backgroundColor = colors[idx % colors.length];
+                ornament.style.color = colors[idx % colors.length];
+                ornament.style.animationDelay = `${idx * 0.2}s, ${idx * 0.3}s`;
+                tree.appendChild(ornament);
+            });
+        }
+
+        // 生成自然飘落的雪花
+        function createSnowflakes() {
+            const body = document.body;
+            setInterval(() => {
+                const snowflake = document.createElement('div');
+                snowflake.classList.add('snowflake');
+                snowflake.textContent = '❄';
+                const x = Math.random() * 100;
+                const size = Math.random() * 8 + 6;
+                const duration = Math.random() * 15 + 10;
+                
+                snowflake.style.left = `${x}vw`;
+                snowflake.style.fontSize = `${size}px`;
+                snowflake.style.animationDuration = `${duration}s`;
+                snowflake.style.animationDelay = `${Math.random() * 5}s`;
+                
+                body.appendChild(snowflake);
+                
+                // 移除落地的雪花，避免性能问题
+                setTimeout(() => {
+                    snowflake.remove();
+                }, duration * 1000);
+            }, 150);
+        }
+
+        // 初始化所有效果
+        createStarBg();
+        createOrnaments();
+        createSnowflakes();
+    </script>
+</body>
+</html>
