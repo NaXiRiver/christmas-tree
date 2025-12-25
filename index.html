@@ -17,16 +17,15 @@ body { margin:0; overflow:hidden; background:#000; }
 <video id="input_video" style="display:none"></video>
 
 <script>
-// ================= 场景 =================
+// ================= 基础场景 =================
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
 camera.position.z = 85;
 
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// 灯光
 scene.add(new THREE.AmbientLight(0xffffff,0.6));
 const light = new THREE.PointLight(0xffd700,3,200);
 light.position.set(30,40,50);
@@ -35,7 +34,7 @@ scene.add(light);
 // ================= 艺术字 =================
 const textPlane = new THREE.Mesh(
   new THREE.PlaneGeometry(55,18),
-  new THREE.MeshBasicMaterial({transparent:true})
+  new THREE.MeshBasicMaterial({ transparent:true })
 );
 
 function makeText(){
@@ -63,7 +62,6 @@ scene.add(galleryGroup);
 const photoTextures = [];
 const loader = new THREE.TextureLoader();
 
-// 直接加载你准备好的 10 张照片
 for(let i=1;i<=10;i++){
   loader.load(`photos/${i}.jpg`, tex=>{
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -75,11 +73,11 @@ for(let i=1;i<=10;i++){
 function createGallery(){
   const geo = new THREE.PlaneGeometry(8,6);
   const borderGeo = new THREE.PlaneGeometry(8.4,6.4);
-  const borderMat = new THREE.MeshBasicMaterial({color:0xffd700});
+  const borderMat = new THREE.MeshBasicMaterial({ color:0xffd700 });
 
   for(let i=0;i<40;i++){
     const tex = photoTextures[i%10];
-    const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:tex}));
+    const mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({ map:tex }));
     const border = new THREE.Mesh(borderGeo,borderMat);
     border.position.z=-0.05;
     mesh.add(border);
@@ -98,15 +96,34 @@ function createGallery(){
   }
 }
 
-// ================= 手势 =================
-let mode="tree";
+// ================= 模式控制 =================
+let mode = "tree";
+let handsEnabled = false;
+let autoTimer = 0;
 
-function animate(){
+function updateMode(delta){
+  if(!handsEnabled){
+    autoTimer += delta;
+    if(autoTimer > 6){
+      autoTimer = 0;
+      mode = mode==="tree" ? "nebula" : mode==="nebula" ? "text" : "tree";
+    }
+  }
+}
+
+// ================= 动画 =================
+let lastTime = performance.now();
+
+function animate(now){
   requestAnimationFrame(animate);
+  const delta = (now-lastTime)/1000;
+  lastTime = now;
+
+  updateMode(delta);
 
   if(mode==="text"){
     textPlane.visible=true;
-    textPlane.position.y = Math.sin(Date.now()*0.002)*1;
+    textPlane.position.y = Math.sin(now*0.002)*1;
   }else{
     textPlane.visible=false;
   }
@@ -126,37 +143,72 @@ function animate(){
 
   renderer.render(scene,camera);
 }
-animate();
+animate(performance.now());
 
-// ================= 手势识别 =================
+// ================= 安全手势初始化 =================
 const video = document.getElementById("input_video");
-const hands = new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-hands.setOptions({maxNumHands:1,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
 
-hands.onResults(r=>{
-  if(!r.multiHandLandmarks) return;
-  const lm = r.multiHandLandmarks[0];
-  const d=(a,b)=>Math.hypot(lm[a].x-lm[b].x,lm[a].y-lm[b].y);
+async function initHandsSafe(){
+  try{
+    const hands = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+    });
 
-  const open = d(8,0)>0.2 && d(12,0)>0.2 && d(16,0)>0.2;
-  const fist = d(8,0)<0.1 && d(12,0)<0.1;
-  const ok = d(4,8)<0.05;
+    hands.setOptions({
+      maxNumHands:1,
+      modelComplexity:0,
+      minDetectionConfidence:0.5,
+      minTrackingConfidence:0.5,
+      selfieMode:true
+    });
 
-  if(open) mode="nebula";
-  else if(ok) mode="text";
-  else if(fist) mode="tree";
-});
+    hands.onResults(r=>{
+      if(!handsEnabled) return;
+      if(!r.multiHandLandmarks || !r.multiHandLandmarks.length) return;
 
-new Camera(video,{
-  onFrame:async()=>await hands.send({image:video}),
-  width:320,height:240
-}).start();
+      const lm = r.multiHandLandmarks[0];
+      const d=(a,b)=>Math.hypot(lm[a].x-lm[b].x,lm[a].y-lm[b].y);
 
+      const open = d(8,0)>0.2 && d(12,0)>0.2 && d(16,0)>0.2;
+      const fist = d(8,0)<0.1 && d(12,0)<0.1;
+      const ok = d(4,8)<0.05;
+
+      if(open) mode="nebula";
+      else if(ok) mode="text";
+      else if(fist) mode="tree";
+    });
+
+    const cam = new Camera(video,{
+      onFrame: async()=>{
+        try{
+          await hands.send({image:video});
+        }catch(e){
+          console.warn("Hands runtime error, fallback",e);
+          handsEnabled=false;
+        }
+      },
+      width:320,height:240
+    });
+
+    await cam.start();
+    handsEnabled = true;
+    console.log("✅ 手势模式已启用");
+
+  }catch(e){
+    console.warn("❌ 手势不可用，自动模式",e);
+    handsEnabled = false;
+  }
+}
+
+initHandsSafe();
+
+// ================= resize =================
 window.onresize=()=>{
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
 };
 </script>
+
 </body>
 </html>
